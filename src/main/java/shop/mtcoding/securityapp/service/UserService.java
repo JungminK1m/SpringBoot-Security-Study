@@ -1,12 +1,16 @@
 package shop.mtcoding.securityapp.service;
 
+import java.util.Optional;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
+import shop.mtcoding.securityapp.core.jwt.MyJwtProvider;
 import shop.mtcoding.securityapp.dto.UserRequest;
 import shop.mtcoding.securityapp.dto.UserResponse;
+import shop.mtcoding.securityapp.dto.UserRequest.LoginDTO;
 import shop.mtcoding.securityapp.model.User;
 import shop.mtcoding.securityapp.model.UserRepository;
 
@@ -27,11 +31,27 @@ public class UserService {
      */
 
     @Transactional
-    public UserResponse.JoinDto 회원가입(UserRequest.JoinDto joinDto) {
+    public UserResponse.JoinDto 회원가입(UserRequest.JoinDTO joinDto) {
         String rawPassword = joinDto.getPassword();
         String encPassword = passwordEncoder.encode(rawPassword);
         joinDto.setPassword(encPassword);
         User userPS = userRepository.save(joinDto.toEntity());
         return new UserResponse.JoinDto(userPS);
+    }
+
+    @Transactional
+    public String 로그인(UserRequest.LoginDTO loginDTO) {
+        Optional<User> userOP = userRepository.findByUsername(loginDTO.getUsername());
+        if (userOP.isPresent()) {
+            User userPS = userOP.get();
+            if (passwordEncoder.matches(loginDTO.getPassword(), userPS.getPassword())) {
+
+                String jwt = MyJwtProvider.create(userPS);
+                return jwt;
+            }
+            throw new RuntimeException("토큰 있음");
+        } else {
+            throw new RuntimeException("토큰 없음");
+        }
     }
 }
